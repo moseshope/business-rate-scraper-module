@@ -148,10 +148,6 @@ Monitor the scraping process through:
 - DynamoDB metrics
 - ECS task metrics
 
-## License
-
-BR License
-
 ## Author
 
-blackpam1021@gmail.com
+lucky.yaroslav0430@gmail.com
