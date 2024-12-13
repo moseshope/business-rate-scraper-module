@@ -25,16 +25,16 @@ async function processEstimateId(estimateId) {
       `Processing estimate ID ${estimateId} for ${estimate.category} in ${estimate.city}, ${estimate.state}`
     );
 
-    // Get existing businesses for this query
-    const existingBusinesses = await getBusinessByQueryIdInDynamoDB(
-      estimateId,
-      "Business"
-    );
-
-    console.log(`Business Data: ${existingBusinesses}`);
-
     if (estimate && estimate.pending < 67 && estimate.count >= 5) {
       const url = `https://www.google.com/maps/search/${estimate.category} in ${estimate.city}, ${estimate.state}?hl=en`;
+
+      // Get existing businesses for this query
+      const existingBusinesses = await getBusinessByQueryIdInDynamoDB(
+        estimateId,
+        "Business"
+      );
+
+      console.log(`Business Data: ${existingBusinesses}`);
 
       // Call scraper with the estimate data
       const results = await getScrapePlaceReviews({
