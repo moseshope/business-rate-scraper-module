@@ -118,7 +118,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = {
-  processEstimateId,
-  main,
-};
+main();
