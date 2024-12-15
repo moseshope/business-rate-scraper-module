@@ -14,8 +14,8 @@ const s3 = new AWS.S3();
 async function storeDataInDynamoDB(data, tableName) {
   const promises = data.map((item) => {
     // Convert id to number if it's a string and can be parsed as a number
-    if (item.id && typeof item.id === "string") {
-      const numId = parseInt(item.id.replace(/\D/g, ""), 10);
+    if (item.id && typeof item.id === 'string') {
+      const numId = parseInt(item.id.replace(/\D/g, ''), 10);
       if (!isNaN(numId)) {
         item.id = numId;
       }
@@ -30,8 +30,7 @@ async function updateItemsFieldsInDynamoDB(items, tableName) {
   const promises = items.map((item) => {
     const { id, ...fieldsToUpdate } = item;
     // Convert id to number if it's a string
-    const numId =
-      typeof id === "string" ? parseInt(id.replace(/\D/g, ""), 10) : id;
+    const numId = typeof id === 'string' ? parseInt(id.replace(/\D/g, ''), 10) : id;
 
     const updateExpressionParts = [];
     const expressionAttributeNames = {};
@@ -64,8 +63,7 @@ async function updateItemsFieldsInDynamoDB(items, tableName) {
 async function updateFieldsInDynamoDB(item, tableName) {
   const { id, ...fieldsToUpdate } = item;
   // Convert id to number if it's a string
-  const numId =
-    typeof id === "string" ? parseInt(id.replace(/\D/g, ""), 10) : id;
+  const numId = typeof id === 'string' ? parseInt(id.replace(/\D/g, ''), 10) : id;
 
   const updateExpressionParts = [];
   const expressionAttributeNames = {};
@@ -99,12 +97,7 @@ async function deleteReviewsByBusinessIdInDynamoDB(b_id, tableName) {
   const promises = itemsToDelete.map((item) => {
     const params = {
       TableName: tableName,
-      Key: {
-        id:
-          typeof item.id === "string"
-            ? parseInt(item.id.replace(/\D/g, ""), 10)
-            : item.id,
-      },
+      Key: { id: typeof item.id === 'string' ? parseInt(item.id.replace(/\D/g, ''), 10) : item.id },
     };
 
     return dynamoDB.delete(params).promise();
@@ -116,10 +109,7 @@ async function deleteReviewsByBusinessIdInDynamoDB(b_id, tableName) {
 async function deleteBusinessByIdInDynamoDB(b_id, tableName) {
   const params = {
     TableName: tableName,
-    Key: {
-      id:
-        typeof b_id === "string" ? parseInt(b_id.replace(/\D/g, ""), 10) : b_id,
-    },
+    Key: { id: typeof b_id === 'string' ? parseInt(b_id.replace(/\D/g, ''), 10) : b_id },
   };
 
   return await dynamoDB.delete(params).promise();
@@ -186,10 +176,7 @@ async function getReviewsByBusinessIdInDynamoDB(business_id, tableName) {
 }
 
 async function getEstimateByIdInDynamoDB(query_id, tableName) {
-  const numId =
-    typeof query_id === "string"
-      ? parseInt(query_id.replace(/\D/g, ""), 10)
-      : query_id;
+  const numId = typeof query_id === 'string' ? parseInt(query_id.replace(/\D/g, ''), 10) : query_id;
   const params = {
     TableName: tableName,
     Key: { id: numId },
@@ -245,7 +232,8 @@ async function storeQueryDataInStorage(results, updateflag = false) {
     // Process each place in the results
     for (const result of results.data) {
       const placeInfo = result.placeInfo;
-      const businessId = parseInt(result.cid.replace(/\D/g, ""), 10); // Convert to number
+      // cid is already a number from scraper.js
+      const businessId = result.cid;
       const scraapingtime = "2024_07";
 
       // Store raw data in S3
@@ -290,12 +278,8 @@ async function storeQueryDataInStorage(results, updateflag = false) {
         timestamp: new Date().toISOString(),
       };
 
-      console.log("!!!!!!!!!!!!!!!!!!!!!! Test1 !!!!!!!!!!!!!!!!!!!!!!!!!!");
-
       // Store business data in DynamoDB
       await storeDataInDynamoDB([businessData], "Business");
-
-      console.log("!!!!!!!!!!!!!!!!!!!!!! Test2 !!!!!!!!!!!!!!!!!!!!!!!!!!");
 
       // Process reviews
       const reviews = result.reviews
@@ -306,7 +290,7 @@ async function storeQueryDataInStorage(results, updateflag = false) {
         .slice(0, 100);
 
       const reviewsForDynamoDB = reviews.map((review, index) => ({
-        id: parseInt(`${businessId}${index}`, 10), // Generate numeric ID
+        id: parseInt(`${businessId}${index}`, 10),
         business_id: businessId,
         author_id: review.user.link?.split("/")[5] || "",
         author_image: review.user.thumbnail || "",
