@@ -1,4 +1,19 @@
 const { chromium } = require("playwright");
+
+// Helper function to convert Google Maps feature ID to numeric CID
+const convertFeatureIdToCid = (featureId) => {
+  try {
+    const cidHexadecimal = featureId.split(":")[1];
+    // Convert hexadecimal to numeric string and then to number
+    const numericId = parseInt(BigInt(`0x${cidHexadecimal}`).toString(), 10);
+    return numericId;
+  } catch (error) {
+    console.error("Error converting feature ID to CID:", error);
+    // Generate a fallback numeric ID if conversion fails
+    return Date.now();
+  }
+};
+
 async function scrollPage(page, scrollContainer, limit = 1000) {
   console.log("scroll down");
   let lastHeight = await page.evaluate(
@@ -30,11 +45,12 @@ async function scrollPage(page, scrollContainer, limit = 1000) {
       lastHeight = newHeight;
       count++;
     } catch (error) {
-      console.error(error.message); // Log any timeout errors
-      return false; // Break the loop if any operation times out
+      console.error(error.message);
+      return false;
     }
   }
 }
+
 async function getReviewsFromPage(page, placedata) {
   if (placedata.type == "Hotel" || placedata.type == "Motel") {
     const reviews = await page.evaluate(() => {
@@ -79,8 +95,6 @@ async function getReviewsFromPage(page, placedata) {
         let currentDate = new Date();
         let numday = 0;
         let datestringarr = reviews[i].tempdate.split(" ");
-        // console.log(datestringarr);
-        // console.log(currentDate);
         if (datestringarr[0] == "a") numday = 1;
         else numday = parseInt(datestringarr[0]);
         let numsize = datestringarr[1];
@@ -141,8 +155,6 @@ async function getReviewsFromPage(page, placedata) {
         let currentDate = new Date();
         let numday = 0;
         let datestringarr = reviews[i].tempdate.split(" ");
-        // console.log(datestringarr);
-        // console.log(currentDate);
         if (datestringarr[0] == "a") numday = 1;
         else numday = parseInt(datestringarr[0]);
         let numsize = datestringarr[1];
@@ -165,15 +177,16 @@ async function getReviewsFromPage(page, placedata) {
     return reviews;
   }
 }
+
 async function getPlacesFromEachPage(mainpage, browser, data) {
   const places = [];
   const oldpages = [];
   const cidlist = [];
-  if(data.updateflag)
-    {
-      for(let updateindex = 0; updateindex < data.updatelist.length; updateindex++)
-        cidlist.push(data.updatelist[updateindex].cid);
+  if(data.updateflag) {
+    for(let updateindex = 0; updateindex < data.updatelist.length; updateindex++) {
+      cidlist.push(data.updatelist[updateindex].cid);
     }
+  }
   let pages = await mainpage.evaluate(() => {
     return Array.from(document.querySelectorAll(".Nv2PK")).map((el) => {
       return {
@@ -187,11 +200,7 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
       };
     });
   });
-  console.log(
-    "----------------------",
-    pages.length,
-    "------------------------"
-  );
+  console.log("----------------------", pages.length, "------------------------");
   let tempcount = 0;
   for (let i = 0; i < pages.length; i++) {
     console.log("place of : ", data.threadindex);
@@ -201,30 +210,20 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
     if (pages[i].jslog && pages[i].href && pages[i].type && (pages[i].type.toLowerCase() == data.data.category.toLowerCase() ||(pages[i].type == "Hotel" || pages[i].type.includes("hotel")) || (pages[i].type == "Motel" || pages[i].type.includes("motel") || pages[i].type.includes("Motel")))) {
       console.log("step1 arrive");
       const location_link = pages[i].href;
-      const convertFeatureIdToCid = (featureId) => {
-        const cidHexadecimal = featureId.split(":")[1];
-        console.log(featureId, cidHexadecimal);
-        const cid = BigInt(`${cidHexadecimal}`).toString();
-        return cid;
-      };
       let google_id = location_link.match(
         /0x[a-f,0-9]{10,16}:0x[a-f,0-9]{10,16}/g
       )
         ? location_link.match(/0x[a-f,0-9]{10,16}:0x[a-f,0-9]{10,16}/g)[0]
         : "";
-        if(google_id=="")
-          continue;
+      if(google_id=="") continue;
+      
       let cid = convertFeatureIdToCid(google_id);
-      if(cidlist.includes(cid))
-        {
-          continue;
-        }
-        else
-        {
-          cidlist.push(cid);
-        }
+      if(cidlist.includes(cid)) {
+        continue;
+      } else {
+        cidlist.push(cid);
+      }
 
-      // console.log(data);
       console.log("create new page");
       const page = await browser.newPage();
       try {
@@ -235,8 +234,6 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
         console.log("go to url");
         await page.goto(pages[i].href,{timeout:60000});
         console.log("wait for busines page  navigation");
-        // await page.waitForNavigation();
-        // await page.waitForNavigation({ waitUntil: 'networkidle0',timeout: 520000 });
         await page.waitForSelector(".DUwDvf",{timeout:30000});
         console.log("start page scrape");
       } catch (error) {
@@ -246,17 +243,11 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
         continue;
       }
 
-      //   const location_link = pages[i].href;
-      //   let google_id = location_link.match(/0x[a-f,0-9]{10,16}:0x[a-f,0-9]{10,16}/g) ? location_link.match(/0x[a-f,0-9]{10,16}:0x[a-f,0-9]{10,16}/g)[0] : "";
       console.log("get placeinfo data");
-      //placeInfo+-*-
-
       const placeInfo = await fillPlaceInfo(page, data);
       placeInfo["google_link"] = location_link;
       placeInfo["cid"] = cid;
       console.log(placeInfo);
-      // console.log(pages.length + ':'+i);
-      // console.log(data.data.city,data.data.category);
       console.log(placeInfo.city, placeInfo.type);
       if (data.data.category == "Hotel" && pages[i].type) {
         if (pages[i].type == "Hotel" || pages[i].type.includes("hotel")) {
@@ -274,17 +265,13 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
         }
       }
       let reviewsortflag = 0;
-      if (placeInfo.city && placeInfo.type&&
+      if (placeInfo.city && placeInfo.type &&
         placeInfo.city == data.data.city &&
         placeInfo.type.toLowerCase() == data.data.category.toLowerCase()
       ) {
-
         tempcount++;
         console.log("business count:",tempcount);
-        //reviewInfo
-        if (
-          placeInfo["reviews"])
-         {
+        if (placeInfo["reviews"]) {
           console.log("get tabs");
           await page.waitForSelector(".hh2c6");
           const tabs = await page.evaluate(() => {
@@ -340,27 +327,13 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
               await page.waitForTimeout(3500);
               await page.waitForSelector(".jftiEf", { state: "visible" ,timeout:60000 });
               console.log("tab wait4");
-              //click most recent selection
               if (placeInfo.reviews > 200) {
                 if (
                   data.data.category == "Hotel" ||
                   data.data.category == "Motel"
                 ) {
                   reviewsortflag = 1;
-                  // console.log("tab wait4-1");
-                  // await page.focus("button.HQzyZ[aria-label='Most relevant']",{timeout:60000});
-                  // console.log("tab wait4-2");
-                  // await page.waitForSelector(
-                  //   "button.HQzyZ[aria-label='Most relevant']",{timeout:60000}
-                  // );
-                  // console.log("tab wait4-3");
-                  // await page.$eval(
-                  //   "button.HQzyZ[aria-label='Most relevant']",
-                  //   (el) => el.click()
-                  // );
-                  // console.log("tab wait4-4");
-                } else 
-                {
+                } else {
                   console.log("tab wait4-1");
                   await page.focus("button.g88MCb.S9kvJb[data-value='Sort']",{timeout:60000});
                   console.log("tab wait4-2");
@@ -408,7 +381,7 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
               placeInfo: placeInfo,
               reviews: reviews,
               google_id: google_id,
-              cid:cid,
+              cid: cid,
               query:
                 data.data.category +
                 " in " +
@@ -422,7 +395,7 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
               placeInfo: placeInfo,
               reviews: [],
               google_id: google_id,
-              cid:cid,
+              cid: cid,
               query:
                 data.data.category +
                 " in " +
@@ -436,7 +409,7 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
           places.push({
             placeInfo: placeInfo,
             reviews: [],
-            cid:cid,
+            cid: cid,
             google_id: google_id,
             query:
               data.data.category +
@@ -449,36 +422,24 @@ async function getPlacesFromEachPage(mainpage, browser, data) {
         }
       }
       await page.close();
-      // if (data.updateflag) {
-      //   if (
-      //     data.data.full_address == placeInfo.address ||
-      //     data.data.google_id == google_id
-      //   ) {
-      //     return places;
-      //   } else {
-      //     places.pop();
-      //   }
-      // }
-
-      // }
     }
   }
-  // console.log(places);
   console.log("one query success");
   return places;
 }
+
 async function fillPlaceInfo(page, data) {
   const placeInfo = await page.evaluate(() => {
     return {
       title: document.querySelector(".DUwDvf")?.textContent.trim(),
       address: document
         .querySelector("button[data-item-id='address'] > div>div:last-child")
-        ?.textContent.trim(), // data-item-id attribute may be different if the language is not English
+        ?.textContent.trim(),
       phone: document
         .querySelector(
           "button[data-tooltip='Copy phone number'] > div>div:last-child"
         )
-        ?.textContent.trim(), // data-item-id attribute may be different if the language is not English
+        ?.textContent.trim(),
       rating: document.querySelector("div.F7nice>span")?.textContent.trim(),
       reviews_temp: document
         .querySelector("div.F7nice>span:last-child")
@@ -491,7 +452,6 @@ async function fillPlaceInfo(page, data) {
     };
   });
   const addresslist = placeInfo.address ? placeInfo.address.split(", ") : [];
-  //   placeInfo["reviews_temp"] = placeInfo["reviews_temp"] ? placeInfo["reviews_temp"].placeInfo["reviews_temp"].replace(",","") : "";
   placeInfo["reviews"] = placeInfo["reviews_temp"]
     ? placeInfo["reviews_temp"].split("(")[1]
       ? placeInfo["reviews_temp"].split("(")[1].split(")")[0]
@@ -540,7 +500,6 @@ async function getScrapePlaceReviews(query) {
   await page.setDefaultTimeout(0);
   await page.goto(query.url);
   const placeInfo = {};
-  // await page.waitForNavigation({waitUntil:'domcontentloaded'});
   console.log("main step1");
   let mainlabel;
   try {
@@ -570,10 +529,9 @@ async function getScrapePlaceReviews(query) {
     }
     console.log("main step2-1");
     let scrollflag = await scrollPage(page, "div.m6QErb.DxyBCb:first-child[role=feed]", 5000);
-    if( scrollflag == false)
-      {
-        return { threadindex: query.threadindex, data: [], success: false };
-      }
+    if(scrollflag == false) {
+      return { threadindex: query.threadindex, data: [], success: false };
+    }
     console.log("main step2-2");
     await page.waitForSelector(".Nv2PK", { timeout:120000 });
 
@@ -584,18 +542,17 @@ async function getScrapePlaceReviews(query) {
     return { threadindex: query.threadindex, success: true, data: places };
   }
 }
+
 process.on('message', async (data) => {
   try {
-  const result = await getScrapePlaceReviews(data);
-  console.log("query success");
-  process.send(result);
-} catch(error){
-        console.log("this query is error!!!:",error);
-        process.send({threadindex: data.threadindex,success:false});
-      }
-  // process.exit(0);
+    const result = await getScrapePlaceReviews(data);
+    console.log("query success");
+    process.send(result);
+  } catch(error) {
+    console.log("this query is error!!!:", error);
+    process.send({threadindex: data.threadindex, success: false});
+  }
 });
-
 
 module.exports = {
   getScrapePlaceReviews,

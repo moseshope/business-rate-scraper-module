@@ -13,6 +13,13 @@ const s3 = new AWS.S3();
 
 async function storeDataInDynamoDB(data, tableName) {
   const promises = data.map((item) => {
+    // Convert id to number if it's a string and can be parsed as a number
+    if (item.id && typeof item.id === "string") {
+      const numId = parseInt(item.id.replace(/\D/g, ""), 10);
+      if (!isNaN(numId)) {
+        item.id = numId;
+      }
+    }
     const params = { TableName: tableName, Item: item };
     return dynamoDB.put(params).promise();
   });
@@ -22,6 +29,10 @@ async function storeDataInDynamoDB(data, tableName) {
 async function updateItemsFieldsInDynamoDB(items, tableName) {
   const promises = items.map((item) => {
     const { id, ...fieldsToUpdate } = item;
+    // Convert id to number if it's a string
+    const numId =
+      typeof id === "string" ? parseInt(id.replace(/\D/g, ""), 10) : id;
+
     const updateExpressionParts = [];
     const expressionAttributeNames = {};
     const expressionAttributeValues = {};
@@ -38,7 +49,7 @@ async function updateItemsFieldsInDynamoDB(items, tableName) {
 
     const params = {
       TableName: tableName,
-      Key: { id },
+      Key: { id: numId },
       UpdateExpression: updateExpression,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -52,6 +63,10 @@ async function updateItemsFieldsInDynamoDB(items, tableName) {
 
 async function updateFieldsInDynamoDB(item, tableName) {
   const { id, ...fieldsToUpdate } = item;
+  // Convert id to number if it's a string
+  const numId =
+    typeof id === "string" ? parseInt(id.replace(/\D/g, ""), 10) : id;
+
   const updateExpressionParts = [];
   const expressionAttributeNames = {};
   const expressionAttributeValues = {};
@@ -68,7 +83,7 @@ async function updateFieldsInDynamoDB(item, tableName) {
 
   const params = {
     TableName: tableName,
-    Key: { id },
+    Key: { id: numId },
     UpdateExpression: updateExpression,
     ExpressionAttributeNames: expressionAttributeNames,
     ExpressionAttributeValues: expressionAttributeValues,
@@ -84,7 +99,12 @@ async function deleteReviewsByBusinessIdInDynamoDB(b_id, tableName) {
   const promises = itemsToDelete.map((item) => {
     const params = {
       TableName: tableName,
-      Key: { id: item.id },
+      Key: {
+        id:
+          typeof item.id === "string"
+            ? parseInt(item.id.replace(/\D/g, ""), 10)
+            : item.id,
+      },
     };
 
     return dynamoDB.delete(params).promise();
@@ -96,7 +116,10 @@ async function deleteReviewsByBusinessIdInDynamoDB(b_id, tableName) {
 async function deleteBusinessByIdInDynamoDB(b_id, tableName) {
   const params = {
     TableName: tableName,
-    Key: { id: b_id },
+    Key: {
+      id:
+        typeof b_id === "string" ? parseInt(b_id.replace(/\D/g, ""), 10) : b_id,
+    },
   };
 
   return await dynamoDB.delete(params).promise();
@@ -163,9 +186,13 @@ async function getReviewsByBusinessIdInDynamoDB(business_id, tableName) {
 }
 
 async function getEstimateByIdInDynamoDB(query_id, tableName) {
+  const numId =
+    typeof query_id === "string"
+      ? parseInt(query_id.replace(/\D/g, ""), 10)
+      : query_id;
   const params = {
     TableName: tableName,
-    Key: { id: query_id },
+    Key: { id: numId },
   };
 
   try {
@@ -218,7 +245,7 @@ async function storeQueryDataInStorage(results, updateflag = false) {
     // Process each place in the results
     for (const result of results.data) {
       const placeInfo = result.placeInfo;
-      const businessId = result.cid;
+      const businessId = parseInt(result.cid.replace(/\D/g, ""), 10); // Convert to number
       const scraapingtime = "2024_07";
 
       // Store raw data in S3
@@ -263,16 +290,12 @@ async function storeQueryDataInStorage(results, updateflag = false) {
         timestamp: new Date().toISOString(),
       };
 
-      console.log(
-        "!!!!!!!!!!!!!!Manual Test 1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      );
+      console.log("!!!!!!!!!!!!!!!!!!!!!! Test1 !!!!!!!!!!!!!!!!!!!!!!!!!!");
 
       // Store business data in DynamoDB
       await storeDataInDynamoDB([businessData], "Business");
 
-      console.log(
-        "!!!!!!!!!!!!!!Manual Test 2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      );
+      console.log("!!!!!!!!!!!!!!!!!!!!!! Test2 !!!!!!!!!!!!!!!!!!!!!!!!!!");
 
       // Process reviews
       const reviews = result.reviews
@@ -282,8 +305,8 @@ async function storeQueryDataInStorage(results, updateflag = false) {
         )
         .slice(0, 100);
 
-      const reviewsForDynamoDB = reviews.map((review) => ({
-        id: review.user.review_id,
+      const reviewsForDynamoDB = reviews.map((review, index) => ({
+        id: parseInt(`${businessId}${index}`, 10), // Generate numeric ID
         business_id: businessId,
         author_id: review.user.link?.split("/")[5] || "",
         author_image: review.user.thumbnail || "",
