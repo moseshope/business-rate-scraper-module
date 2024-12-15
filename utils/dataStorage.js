@@ -263,8 +263,16 @@ async function storeQueryDataInStorage(results, updateflag = false) {
         timestamp: new Date().toISOString(),
       };
 
+      console.log(
+        "!!!!!!!!!!!!!!Manual Test 1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      );
+
       // Store business data in DynamoDB
       await storeDataInDynamoDB([businessData], "Business");
+
+      console.log(
+        "!!!!!!!!!!!!!!Manual Test 2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      );
 
       // Process reviews
       const reviews = result.reviews
