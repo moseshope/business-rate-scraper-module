@@ -3,9 +3,10 @@ const { chromium } = require("playwright");
 // Helper function to convert Google Maps feature ID to numeric CID
 const convertFeatureIdToCid = (featureId) => {
   try {
-    const cidHexadecimal = featureId.split(":")[1];
-    // Convert hexadecimal to numeric string and then to number
-    const numericId = parseInt(BigInt(`0x${cidHexadecimal}`).toString(), 10);
+    // Extract the second part after the colon and remove any "0x" prefix
+    const cidHexadecimal = featureId.split(":")[1].replace(/^0x/, '');
+    // Convert hexadecimal to decimal string and then to number
+    const numericId = parseInt(cidHexadecimal, 16);
     return numericId;
   } catch (error) {
     console.error("Error converting feature ID to CID:", error);
